@@ -5,3 +5,5 @@ cert.pem
 
 __pycache__/
 *.pyc
+
+.cloudflare/

@@ -161,7 +161,7 @@ All settings are environment variables.
 | `RC_TOKEN` | server, agent | required | Shared secret. Must match on both sides. |
 | `RC_SERVER` | agent | none | `wss://<vm-ip>:8765` |
 | `RC_ROOT` | agent | `~/remote-work` | The only folder the VM may touch. |
-| `RC_CERT` | server, agent | `cert.pem` | TLS certificate. |
+| `RC_CERT` | server, agent | server: `cert.pem`; agent: none | TLS certificate. On the agent, leave it unset to trust public certificates (needed behind Cloudflare). |
 | `RC_KEY` | server | `key.pem` | TLS private key. |
 | `RC_PORT` | server | `8765` | Public port the agent connects to. |
 | `RC_CONTROL_PORT` | server, rc, mcp_server | `8766` | Local port `rc.py` and `mcp_server.py` use. |

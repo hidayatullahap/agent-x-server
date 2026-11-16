@@ -7,7 +7,8 @@ Settings (environment variables):
   RC_SERVER  wss://<vm-public-ip>:8765
   RC_TOKEN   shared secret (same value as on the VM)
   RC_ROOT    the only folder the VM may touch (default: ~/remote-work)
-  RC_CERT    path to the VM's cert.pem (default: ./cert.pem)
+  RC_CERT    path to the VM's cert.pem; leave unset when connecting through
+             Cloudflare, so normal public certificates are trusted
 """
 import asyncio
 import base64
@@ -28,7 +29,7 @@ from websockets.asyncio.client import connect
 SERVER = os.environ.get("RC_SERVER", "wss://YOUR_VM_IP:8765")
 TOKEN = os.environ["RC_TOKEN"]
 ROOT = Path(os.environ.get("RC_ROOT", "~/remote-work")).expanduser().resolve()
-CERT = os.environ.get("RC_CERT", "cert.pem")
+CERT = os.environ.get("RC_CERT")
 MAX_SIZE = 64 * 1024 * 1024  # biggest file/message: 64 MB
 PING_SECONDS = 10
 MAX_RESULTS = 1000
@@ -272,7 +273,7 @@ async def handle(ws, msg):
 
 async def main():
     ROOT.mkdir(parents=True, exist_ok=True)
-    tls = ssl.create_default_context(cafile=CERT)  # trust ONLY the VM's cert
+    tls = ssl.create_default_context(cafile=CERT)
     log.info("allowed folder: %s", ROOT)
     while True:
         try:
