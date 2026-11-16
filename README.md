@@ -22,14 +22,17 @@ Only one side has to be reachable from the internet, and that is the VM. The oth
 | `server.py` | VM | Accepts the agent's connection on port 8765 and relays commands to it. |
 | `rc.py` | VM | The command you type. Talks to `server.py` on localhost only. |
 | `agent.py` | Other machine | Connects to the VM, then lists, reads, writes and runs files in one folder. |
+| `mcp_server.py` | VM | Gives an AI agent on the VM tools to read and edit files on the other machine. Talks to `server.py` on localhost only. |
 
 ## Setup
 
-Both machines need Python 3.10+ and the one dependency:
+Both machines need Python 3.10+ and the dependencies:
 
 ```
 pip install -r requirements.txt
 ```
+
+The `mcp` package is only used by `mcp_server.py` on the VM. The other machine can skip it and install only `websockets`.
 
 ### On the VM
 
@@ -107,6 +110,46 @@ The two differ in a few ways:
 
 `replace` matches the text exactly, including line endings. A file with Windows line endings (`\r\n`) needs `\r\n` in the text to match across lines.
 
+## Using it from an AI agent (MCP)
+
+`mcp_server.py` lets an AI agent on the VM (Antigravity, Claude Code, or any other agent that supports MCP) read and edit files on the other machine. MCP (Model Context Protocol) is a standard way to give an AI agent tools. Each tool has named inputs, so the agent never has to put file contents inside a terminal command, where quotes and line breaks break easily.
+
+The agent starts `mcp_server.py` itself and talks to it over standard input and output. `mcp_server.py` then talks to `server.py` on the local port, like `rc.py` does. `server.py` must be running and the other machine must be connected.
+
+| Tool | What it does |
+| --- | --- |
+| `remote_ls` | List a folder. |
+| `remote_read` | Read up to 2000 lines, with line numbers. Takes `start_line` and `line_count`. |
+| `remote_grep` | Search inside files. Same rules as `rc.py grep`. |
+| `remote_glob` | Find files by path pattern, newest first. |
+| `remote_replace` | Replace text that appears exactly once. |
+| `remote_write` | Create a file or overwrite it completely. |
+
+There is no tool for running scripts. The agent can read and edit files, but cannot run anything on the other machine.
+
+### Adding it to Antigravity
+
+In the agent panel, open the `...` menu, choose **Manage MCP Servers**, then **View raw config**. Add this entry, using the full paths on your VM:
+
+```json
+{
+  "mcpServers": {
+    "agent-x": {
+      "command": "/full/path/to/python3",
+      "args": ["/full/path/to/agent-x-server/mcp_server.py"]
+    }
+  }
+}
+```
+
+If `RC_CONTROL_PORT` is not `8766`, add `"env": {"RC_CONTROL_PORT": "<port>"}` to the entry. Use the Python that has the dependencies installed (for example the one inside a virtual environment). Then click refresh in **Manage MCP Servers**.
+
+### Adding it to Claude Code
+
+```
+claude mcp add agent-x -- /full/path/to/python3 /full/path/to/agent-x-server/mcp_server.py
+```
+
 ## Settings
 
 All settings are environment variables.
@@ -119,7 +162,7 @@ All settings are environment variables.
 | `RC_CERT` | server, agent | `cert.pem` | TLS certificate. |
 | `RC_KEY` | server | `key.pem` | TLS private key. |
 | `RC_PORT` | server | `8765` | Public port the agent connects to. |
-| `RC_CONTROL_PORT` | server, rc | `8766` | Local port `rc.py` uses. |
+| `RC_CONTROL_PORT` | server, rc, mcp_server | `8766` | Local port `rc.py` and `mcp_server.py` use. |
 
 ## Security
 
