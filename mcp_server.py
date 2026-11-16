@@ -29,7 +29,7 @@ server = MCPServer(
 
 async def request(**fields):
     try:
-        async with connect(CONTROL, max_size=MAX_SIZE) as ws:
+        async with connect(CONTROL, max_size=MAX_SIZE, proxy=None) as ws:
             await ws.send(json.dumps(fields))
             async for raw in ws:
                 msg = json.loads(raw)

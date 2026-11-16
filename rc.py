@@ -37,7 +37,7 @@ class RemoteError(Exception):
 
 async def call(**request):
     try:
-        async with connect(CONTROL, max_size=MAX_SIZE) as ws:
+        async with connect(CONTROL, max_size=MAX_SIZE, proxy=None) as ws:
             await ws.send(json.dumps(request))
             async for raw in ws:
                 msg = json.loads(raw)
