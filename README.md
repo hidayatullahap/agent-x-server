@@ -89,7 +89,7 @@ Run these on the VM. Remote paths are relative to the agent's allowed folder.
 | `python3 rc.py pull <remote> [local]` | Copy a file from the other machine. |
 | `python3 rc.py push <local> [remote]` | Copy a file to the other machine. |
 | `python3 rc.py edit <file>` | Open the file in `$EDITOR` (default `nano`) and save it back on exit. Creates the file if it does not exist. |
-| `python3 rc.py replace <file> <old> <new>` | Replace a piece of text in a UTF-8 file. Fails if the text is missing or appears more than once. |
+| `python3 rc.py replace <file> <old> <new>` | Replace a piece of text in a file. Fails if the text is missing or appears more than once. |
 | `python3 rc.py run <script.py> [args]` | Run the script there and stream its output live. `rc.py` exits with the script's exit code. |
 
 Pressing Ctrl-C during `run` also stops the script on the other machine.
@@ -108,7 +108,9 @@ The two differ in a few ways:
 
 `glob` always uses Python and includes hidden files.
 
-`replace` matches the text exactly, including line endings. A file with Windows line endings (`\r\n`) needs `\r\n` in the text to match across lines.
+`replace` matches the text exactly, but it follows the file's line endings. In a file with Windows line endings (`\r\n`), line breaks in the old and new text are changed to `\r\n`, so you can type plain line breaks. The file keeps its encoding. `replace` handles UTF-8 (with or without a byte order mark), UTF-16 with a byte order mark, and otherwise the other machine's default encoding (on Windows, usually `cp1252`). A byte order mark is a few bytes at the start of a file that say which encoding it uses.
+
+Scripts started with `run` always send their output as UTF-8, so characters like `é` show correctly on Windows too.
 
 ## Using it from an AI agent (MCP)
 

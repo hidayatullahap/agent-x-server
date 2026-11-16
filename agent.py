@@ -14,6 +14,7 @@ import base64
 import codecs
 import fnmatch
 import json
+import locale
 import os
 import re
 import shutil
@@ -31,6 +32,9 @@ MAX_SIZE = 64 * 1024 * 1024  # biggest file/message: 64 MB
 MAX_RESULTS = 1000
 BINARY_CHECK_BYTES = 8192
 RG_NO_MATCHES = 1
+UTF16_BOMS = ((codecs.BOM_UTF16_LE, "utf-16-le"), (codecs.BOM_UTF16_BE, "utf-16-be"))
+WINDOWS_LINE_ENDING = "\r\n"
+UTF8_SCRIPT_OUTPUT = {"PYTHONIOENCODING": "utf-8"}
 
 procs = {}  # request id -> running subprocess
 
@@ -60,6 +64,23 @@ def replace_once(text, old, new):
     if count > 1:
         raise ValueError(f"text appears {count} times; include more of it so it is unique")
     return text.replace(old, new)
+
+
+def text_encoding(data, fallback):
+    for bom, encoding in UTF16_BOMS:
+        if data.startswith(bom):
+            return encoding
+    try:
+        data.decode("utf-8")
+    except UnicodeDecodeError:
+        return fallback
+    return "utf-8"
+
+
+def to_file_line_endings(text, file_text):
+    if WINDOWS_LINE_ENDING not in file_text:
+        return text
+    return text.replace(WINDOWS_LINE_ENDING, "\n").replace("\n", WINDOWS_LINE_ENDING)
 
 
 def name_matches(relative, name_glob):
@@ -183,8 +204,11 @@ async def handle(ws, msg):
 
         elif cmd == "replace":
             target = safe(msg["path"])
-            text = replace_once(target.read_bytes().decode("utf-8"), msg["old"], msg["new"])
-            target.write_bytes(text.encode("utf-8"))
+            data = target.read_bytes()
+            encoding = text_encoding(data, locale.getpreferredencoding(False))
+            text = data.decode(encoding)
+            old, new = (to_file_line_endings(part, text) for part in (msg["old"], msg["new"]))
+            target.write_bytes(replace_once(text, old, new).encode(encoding))
             await reply(type="done", ok=True)
 
         elif cmd == "write":
@@ -201,6 +225,7 @@ async def handle(ws, msg):
             proc = await asyncio.create_subprocess_exec(
                 sys.executable, "-u", str(script), *args,
                 cwd=script.parent,
+                env={**os.environ, **UTF8_SCRIPT_OUTPUT},
                 stdin=asyncio.subprocess.DEVNULL,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.STDOUT,

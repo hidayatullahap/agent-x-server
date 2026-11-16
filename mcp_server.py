@@ -107,7 +107,7 @@ async def remote_glob(
 
 
 @server.tool(description=(
-    "Replace one exact piece of text in a UTF-8 file. Fails if the text is missing or appears "
+    "Replace one exact piece of text in a file. Fails if the text is missing or appears "
     "more than once; then include more surrounding text so it is unique. Do not include the "
     "line-number prefix from remote_read."
 ))
