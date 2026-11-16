@@ -80,13 +80,32 @@ Run these on the VM. Remote paths are relative to the agent's allowed folder.
 | Command | What it does |
 | --- | --- |
 | `python3 rc.py ls [folder]` | List files. |
-| `python3 rc.py cat <file>` | Print a file. |
+| `python3 rc.py cat <file> [range]` | Print a file. With a range, print only those lines: `10-20`, `10-` (line 10 to the end) or `10` (one line). Only those lines are sent over the network. |
+| `python3 rc.py grep <pattern> [folder] [name-glob]` | Search inside files for a regular expression (a text pattern). Prints `path:line:text` for each match. Add `(?i)` at the start of the pattern to ignore upper and lower case. |
+| `python3 rc.py glob <pattern> [folder]` | List files whose path matches a pattern such as `**/*.py`, newest first. |
 | `python3 rc.py pull <remote> [local]` | Copy a file from the other machine. |
 | `python3 rc.py push <local> [remote]` | Copy a file to the other machine. |
 | `python3 rc.py edit <file>` | Open the file in `$EDITOR` (default `nano`) and save it back on exit. Creates the file if it does not exist. |
+| `python3 rc.py replace <file> <old> <new>` | Replace a piece of text in a UTF-8 file. Fails if the text is missing or appears more than once. |
 | `python3 rc.py run <script.py> [args]` | Run the script there and stream its output live. `rc.py` exits with the script's exit code. |
 
 Pressing Ctrl-C during `run` also stops the script on the other machine.
+
+`grep` and `glob` exit with code 1 when nothing matches, like the Unix `grep` command. Both stop at 1000 results.
+
+### How search works
+
+`grep` uses [ripgrep](https://github.com/BurntSushi/ripgrep) (`rg`) when it is installed on the other machine, and plain Python when it is not. Both skip hidden files and folders (names that start with `.`), binary files and symbolic links. A name glob without a `/`, such as `*.py`, matches file names in any folder. A glob with a `/`, such as `src/*.py`, matches paths from the allowed folder.
+
+The two differ in a few ways:
+
+- ripgrep also skips files listed in `.gitignore`. The Python version does not.
+- Patterns use ripgrep's syntax or Python's syntax. Common patterns work the same in both.
+- The Python version is slower on large folders.
+
+`glob` always uses Python and includes hidden files.
+
+`replace` matches the text exactly, including line endings. A file with Windows line endings (`\r\n`) needs `\r\n` in the text to match across lines.
 
 ## Settings
 
@@ -125,8 +144,11 @@ The agent's first message is `{"token": "..."}`. After that, the server sends re
 | Request | Fields | Final reply |
 | --- | --- | --- |
 | `ls` | `path` | `items`: list of `{name, dir, size}` |
-| `read` | `path` | `data`: file contents, base64 |
+| `read` | `path`, optional `start` and `end` (line numbers, from 1; `end` may be `null` for "to the end") | `data`: file contents, base64 |
+| `grep` | `pattern`, `path`, optional `glob` | `matches`: list of `{path, line, text}`; `truncated`: true if results were cut off |
+| `glob` | `pattern`, `path` | `files`: list of paths, newest first; `truncated` |
 | `write` | `path`, `data` (base64) | none |
+| `replace` | `path`, `old`, `new` | none |
 | `run` | `path`, `args` | `code`: exit code |
 | `kill` | `target`: id of a `run` request | no reply |
 
@@ -142,4 +164,4 @@ Files and messages are limited to 64 MB.
 
 ## Status
 
-Tested end to end on a single machine over localhost: list, read, write, edit, run with live output, Ctrl-C stopping the remote script, and rejection of bad tokens and outside-folder paths. Not yet tested across a real network.
+Tested end to end on a single machine over localhost: list, read, line ranges, grep (with and without ripgrep), glob, replace, write, edit, run with live output, Ctrl-C stopping the remote script, and rejection of bad tokens and outside-folder paths. Not yet tested across a real network.
