@@ -1,0 +1,7 @@
+# secrets - never commit these
+key.pem
+cert.pem
+.env
+
+__pycache__/
+*.pyc
