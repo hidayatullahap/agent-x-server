@@ -15,6 +15,7 @@ import codecs
 import fnmatch
 import json
 import locale
+import logging
 import os
 import re
 import shutil
@@ -35,6 +36,10 @@ RG_NO_MATCHES = 1
 UTF16_BOMS = ((codecs.BOM_UTF16_LE, "utf-16-le"), (codecs.BOM_UTF16_BE, "utf-16-be"))
 WINDOWS_LINE_ENDING = "\r\n"
 UTF8_SCRIPT_OUTPUT = {"PYTHONIOENCODING": "utf-8"}
+
+LOGGED_FIELDS = ("cmd", "path", "pattern", "glob", "args")
+
+log = logging.getLogger("agent")
 
 procs = {}  # request id -> running subprocess
 
@@ -164,8 +169,13 @@ def find_files(pattern, folder):
     return [path.relative_to(ROOT).as_posix() for path in found]
 
 
+def describe(msg):
+    return {field: msg[field] for field in LOGGED_FIELDS if field in msg}
+
+
 async def handle(ws, msg):
     rid = msg.get("id")
+    log.info("request %s: %s", str(rid)[:8], describe(msg))
 
     async def reply(**fields):
         await ws.send(json.dumps({"id": rid, **fields}))
@@ -240,6 +250,7 @@ async def handle(ws, msg):
                 procs.pop(rid, None)
                 if proc.returncode is None:
                     proc.kill()
+            log.info("request %s: script exited with code %s", str(rid)[:8], code)
             await reply(type="done", ok=True, code=code)
 
         elif cmd == "kill":
@@ -251,6 +262,7 @@ async def handle(ws, msg):
             raise ValueError(f"unknown command: {cmd}")
 
     except Exception as e:
+        log.warning("request %s failed: %s: %s", str(rid)[:8], type(e).__name__, e)
         try:
             await reply(type="done", ok=False, error=f"{type(e).__name__}: {e}")
         except Exception:
@@ -260,25 +272,26 @@ async def handle(ws, msg):
 async def main():
     ROOT.mkdir(parents=True, exist_ok=True)
     tls = ssl.create_default_context(cafile=CERT)  # trust ONLY the VM's cert
-    print(f"allowed folder: {ROOT}")
+    log.info("allowed folder: %s", ROOT)
     while True:
         try:
             async with connect(SERVER, ssl=tls, max_size=MAX_SIZE) as ws:
                 await ws.send(json.dumps({"token": TOKEN}))
-                print(f"connected to {SERVER}")
+                log.info("connected to %s", SERVER)
                 tasks = set()
                 async for raw in ws:
                     task = asyncio.create_task(handle(ws, json.loads(raw)))
                     tasks.add(task)
                     task.add_done_callback(tasks.discard)
         except Exception as e:
-            print(f"not connected ({type(e).__name__}: {e}); retrying in 5s")
+            log.warning("not connected (%s: %s); retrying in 5s", type(e).__name__, e)
         for proc in list(procs.values()):
             proc.kill()  # don't leave scripts running with nobody watching
         await asyncio.sleep(5)
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
