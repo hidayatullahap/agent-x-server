@@ -30,6 +30,7 @@ TOKEN = os.environ["RC_TOKEN"]
 ROOT = Path(os.environ.get("RC_ROOT", "~/remote-work")).expanduser().resolve()
 CERT = os.environ.get("RC_CERT", "cert.pem")
 MAX_SIZE = 64 * 1024 * 1024  # biggest file/message: 64 MB
+PING_SECONDS = 10
 MAX_RESULTS = 1000
 BINARY_CHECK_BYTES = 8192
 RG_NO_MATCHES = 1
@@ -275,7 +276,8 @@ async def main():
     log.info("allowed folder: %s", ROOT)
     while True:
         try:
-            async with connect(SERVER, ssl=tls, max_size=MAX_SIZE) as ws:
+            async with connect(SERVER, ssl=tls, max_size=MAX_SIZE,
+                             ping_interval=PING_SECONDS, ping_timeout=PING_SECONDS) as ws:
                 await ws.send(json.dumps({"token": TOKEN}))
                 log.info("connected to %s", SERVER)
                 tasks = set()

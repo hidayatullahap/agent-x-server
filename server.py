@@ -26,6 +26,7 @@ KEY = os.environ.get("RC_KEY", "key.pem")
 AGENT_PORT = int(os.environ.get("RC_PORT", "8765"))
 CONTROL_PORT = int(os.environ.get("RC_CONTROL_PORT", "8766"))
 MAX_SIZE = 64 * 1024 * 1024
+PING_SECONDS = 10
 LOGGED_FIELDS = ("cmd", "path", "pattern", "glob", "args")
 
 log = logging.getLogger("server")
@@ -111,7 +112,8 @@ async def control_handler(ws):
 async def main():
     tls = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     tls.load_cert_chain(CERT, KEY)
-    async with serve(agent_handler, "0.0.0.0", AGENT_PORT, ssl=tls, max_size=MAX_SIZE), \
+    async with serve(agent_handler, "0.0.0.0", AGENT_PORT, ssl=tls, max_size=MAX_SIZE,
+                     ping_interval=PING_SECONDS, ping_timeout=PING_SECONDS), \
                serve(control_handler, "127.0.0.1", CONTROL_PORT, max_size=MAX_SIZE):
         log.info("waiting for agent on port %s, control on 127.0.0.1:%s", AGENT_PORT, CONTROL_PORT)
         await asyncio.Future()  # run forever
