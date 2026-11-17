@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  macOS: start agent.py when you log in and restart it if it stops.
+
+    1. Replace every /Users/YOU below, and the python3 path (see: which python3).
+    2. cp service/com.kucing-ag.agent.plist ~/Library/LaunchAgents/
+    3. launchctl load ~/Library/LaunchAgents/com.kucing-ag.agent.plist
+
+  Stop it with: launchctl unload ~/Library/LaunchAgents/com.kucing-ag.agent.plist
+  The agent reads kucing-ag.json from WorkingDirectory, then ~/.kucing-ag/config.json.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.kucing-ag.agent</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/Users/YOU/agent-x-server/agent.py</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/YOU/agent-x-server</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/YOU/Library/Logs/kucing-ag.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/YOU/Library/Logs/kucing-ag.log</string>
+</dict>
+</plist>

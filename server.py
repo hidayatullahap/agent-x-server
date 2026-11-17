@@ -27,7 +27,11 @@ AGENT_PORT = int(os.environ.get("RC_PORT", "8765"))
 CONTROL_PORT = int(os.environ.get("RC_CONTROL_PORT", "8766"))
 MAX_SIZE = 64 * 1024 * 1024
 PING_SECONDS = 10
-LOGGED_FIELDS = ("cmd", "path", "pattern", "glob", "args")
+PROTOCOL = 2  # must match agent.py
+BAD_TOKEN, BAD_PROTOCOL = 4001, 4002  # WebSocket close codes
+NO_AGENT = ("agent is not connected: start agent.py on the other machine, "
+            "or read its log to see why it cannot connect")
+LOGGED_FIELDS = ("cmd", "path", "to", "pattern", "glob", "name", "args")
 
 log = logging.getLogger("server")
 
@@ -49,7 +53,13 @@ async def agent_handler(ws):
         ok = False
     if not ok:
         log.warning("agent rejected (bad token) from %s", ws.remote_address[0])
-        await ws.close(4001, "bad token")
+        await ws.close(BAD_TOKEN, "bad token")
+        return
+    theirs = hello.get("protocol", 1)
+    if theirs != PROTOCOL:
+        log.warning("agent rejected: it speaks protocol %s, this server speaks %s", theirs, PROTOCOL)
+        await ws.close(BAD_PROTOCOL, f"protocol mismatch: server uses {PROTOCOL}, agent uses {theirs}; "
+                                     "update the older one")
         return
 
     if agent is not None:
@@ -76,7 +86,7 @@ async def control_handler(ws):
     request = json.loads(await ws.recv())
     if agent is None:
         log.warning("request refused, agent is not connected: %s", describe(request))
-        await ws.send(json.dumps({"type": "done", "ok": False, "error": "agent is not connected"}))
+        await ws.send(json.dumps({"type": "done", "ok": False, "error": NO_AGENT}))
         return
 
     target = agent

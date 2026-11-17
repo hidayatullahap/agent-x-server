@@ -1,0 +1,21 @@
+# Linux: start agent.py when you log in and restart it if it stops.
+#
+#   1. Fix the two paths below. %h is your home folder.
+#   2. cp service/kucing-ag.service ~/.config/systemd/user/
+#   3. systemctl --user enable --now kucing-ag
+#   4. To keep it running while you are logged out: loginctl enable-linger $USER
+#
+# Log: journalctl --user -u kucing-ag -f
+[Unit]
+Description=agent.py - lets the VM work in one folder on this machine
+After=network-online.target
+
+[Service]
+# The agent reads kucing-ag.json from this folder, then ~/.kucing-ag/config.json.
+WorkingDirectory=%h/agent-x-server
+ExecStart=/usr/bin/python3 %h/agent-x-server/agent.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target
