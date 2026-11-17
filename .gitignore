@@ -2,6 +2,7 @@
 key.pem
 cert.pem
 .env
+agent-x.json
 
 __pycache__/
 *.pyc
