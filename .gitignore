@@ -2,7 +2,7 @@
 key.pem
 cert.pem
 .env
-agent-x.json
+kucingdev.json
 
 __pycache__/
 *.pyc

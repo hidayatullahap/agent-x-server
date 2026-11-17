@@ -156,15 +156,15 @@ claude mcp add agent-x -- /full/path/to/python3 /full/path/to/agent-x-server/mcp
 
 The agent reads `server`, `token`, `root` and `cert` from, in order (first one found wins):
 
-1. **Local config:** `agent-x.json` in the directory you run `agent.py` from
-2. **Global config:** `~/.agent-x/config.json`
+1. **Local config:** `kucingdev.json` in the directory you run `agent.py` from
+2. **Global config:** `~/.kucingdev/config.json`
 3. **Environment variables** (`RC_SERVER`, `RC_TOKEN`, `RC_ROOT`, `RC_CERT`)
 
 ```json
 { "server": "wss://1.2.3.4:8765", "token": "<token>", "root": "~/remote-work" }
 ```
 
-`agent-x.json` is in `.gitignore` because it holds the token. Everything else below is an environment variable only.
+`kucingdev.json` is in `.gitignore` because it holds the token. Everything else below is an environment variable only.
 
 | Variable | Used by | Default | Meaning |
 | --- | --- | --- | --- |

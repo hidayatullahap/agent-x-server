@@ -4,8 +4,8 @@
 It dials OUT to the VM, so no port forwarding is needed here.
 
 Settings are looked up in this order (first one found wins):
-  1. local config   ./agent-x.json   (current directory)
-  2. global config  ~/.agent-x/config.json
+  1. local config   ./kucingdev.json   (current directory)
+  2. global config  ~/.kucingdev/config.json
   3. environment variables
 
   config key  env var    meaning
@@ -32,8 +32,8 @@ from pathlib import Path
 
 from websockets.asyncio.client import connect
 
-LOCAL_CONFIG = Path.cwd() / "agent-x.json"
-GLOBAL_CONFIG = Path.home() / ".agent-x" / "config.json"
+LOCAL_CONFIG = Path.cwd() / "kucingdev.json"
+GLOBAL_CONFIG = Path.home() / ".kucingdev" / "config.json"
 
 
 def load_config(path):
@@ -62,7 +62,7 @@ def setting(key, env, default=None):
 SERVER = setting("server", "RC_SERVER", "wss://YOUR_VM_IP:8765")
 TOKEN = setting("token", "RC_TOKEN")
 if not TOKEN:
-    sys.exit("token is not set: add it to agent-x.json, ~/.agent-x/config.json or RC_TOKEN")
+    sys.exit("token is not set: add it to kucingdev.json, ~/.kucingdev/config.json or RC_TOKEN")
 ROOT = Path(setting("root", "RC_ROOT", "~/remote-work")).expanduser().resolve()
 CERT = setting("cert", "RC_CERT")
 MAX_SIZE = 64 * 1024 * 1024  # biggest file/message: 64 MB
