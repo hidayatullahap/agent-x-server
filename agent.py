@@ -3,12 +3,18 @@
 
 It dials OUT to the VM, so no port forwarding is needed here.
 
-Settings (environment variables):
-  RC_SERVER  wss://<vm-public-ip>:8765
-  RC_TOKEN   shared secret (same value as on the VM)
-  RC_ROOT    the only folder the VM may touch (default: ~/remote-work)
-  RC_CERT    path to the VM's cert.pem; leave unset when connecting through
-             Cloudflare, so normal public certificates are trusted
+Settings are looked up in this order (first one found wins):
+  1. local config   ./kucingdev.json   (current directory)
+  2. global config  ~/.kucingdev/config.json
+  3. environment variables
+
+  config key  env var    meaning
+  server      RC_SERVER  wss://<vm-public-ip>:8765
+  token       RC_TOKEN   shared secret (same value as on the VM)
+  root        RC_ROOT    the only folder the VM may touch (default: ~/remote-work)
+  cert        RC_CERT    path to the VM's cert.pem; leave unset when connecting
+                         through Cloudflare, so normal public certificates are
+                         trusted
 """
 import asyncio
 import base64
@@ -26,10 +32,39 @@ from pathlib import Path
 
 from websockets.asyncio.client import connect
 
-SERVER = os.environ.get("RC_SERVER", "wss://YOUR_VM_IP:8765")
-TOKEN = os.environ["RC_TOKEN"]
-ROOT = Path(os.environ.get("RC_ROOT", "~/remote-work")).expanduser().resolve()
-CERT = os.environ.get("RC_CERT")
+LOCAL_CONFIG = Path.cwd() / "kucingdev.json"
+GLOBAL_CONFIG = Path.home() / ".kucingdev" / "config.json"
+
+
+def load_config(path):
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        sys.exit(f"cannot read config {path}: {exc}")
+    if not isinstance(data, dict):
+        sys.exit(f"config {path} must be a JSON object")
+    return data
+
+
+CONFIGS = [load_config(LOCAL_CONFIG), load_config(GLOBAL_CONFIG)]  # highest priority first
+
+
+def setting(key, env, default=None):
+    """Local config, then global config, then environment, then default."""
+    for config in CONFIGS:
+        if config.get(key) not in (None, ""):
+            return str(config[key])
+    return os.environ.get(env, default)
+
+
+SERVER = setting("server", "RC_SERVER", "wss://YOUR_VM_IP:8765")
+TOKEN = setting("token", "RC_TOKEN")
+if not TOKEN:
+    sys.exit("token is not set: add it to kucingdev.json, ~/.kucingdev/config.json or RC_TOKEN")
+ROOT = Path(setting("root", "RC_ROOT", "~/remote-work")).expanduser().resolve()
+CERT = setting("cert", "RC_CERT")
 MAX_SIZE = 64 * 1024 * 1024  # biggest file/message: 64 MB
 PING_SECONDS = 10
 MAX_RESULTS = 1000
